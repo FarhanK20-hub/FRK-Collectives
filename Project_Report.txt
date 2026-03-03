@@ -1,0 +1,156 @@
+================================================================================
+                    PROJECT REPORT: FRK COLLECTIVES E-COMMERCE
+================================================================================
+
+1. PROBLEM STATEMENT
+--------------------
+The objective of this project was to create a comprehensive product catalog where 
+users can browse premium high-end items. The core requirement involved 
+implementing a dynamic "Shopping Cart" using HTTP Sessions, allowing users to 
+add, remove, and update items before proceeding to a final checkout. 
+
+Apart from the basic requirements, this project has been developed as a fully 
+functional, premium, production-ready e-commerce platform with advanced features,
+professional aesthetics, and robust backend architecture.
+
+2. THE SOLUTION & ARCHITECTURE
+------------------------------
+The solution is built using the Model-View-Controller (MVC) design pattern, 
+ensuring a clean separation between data, business logic, and the user interface.
+
+ARCHITECTURAL COMPONENTS:
+- Model: JavaBeans (POJOs) representing Users, Products, CartItems, and Orders.
+- View: JSP pages enhanced with JSTL (JavaServer Pages Standard Tag Library) 
+  for dynamic content rendering without scriptlets.
+- Controller: Java Servlets handling HTTP requests, managing session state, 
+  and communicating with the DAO layer.
+- Persistence: Data Access Object (DAO) pattern using optimized JDBC for 
+  database interactions with MySQL.
+
+TECH STACK:
+- Backend: Java, Servlets, JSP
+- Frontend: HTML5, CSS3 (Premium Dark/Glassmorphic design), Vanilla JS
+- Database: MySQL 8.0
+- Server: Apache Maven, Jetty/Tomcat
+
+3. PROJECT STRUCTURE (TECHNICAL REQUIREMENTS)
+---------------------------------------------
+The project follows a standard Maven web application structure:
+
+E-COM/
+├── src/main/java/com/frk/
+│   ├── controller/      (Servlets: Cart, Auth, Products, Checkout, etc.)
+│   ├── dao/             (Database Access: ProductDAO, UserDAO, OrderDAO)
+│   ├── model/           (JavaBeans: Product, User, CartItem, Order)
+│   └── util/            (Helper classes: DBConnection, PasswordHasher)
+├── src/main/webapp/
+│   ├── css/             (Premium styles.css)
+│   ├── js/              (Interactive scripts)
+│   ├── admin/           (Dashboard and management pages)
+│   ├── WEB-INF/
+│   │   └── fragments/   (Reusable header/footer modules)
+│   └── index.jsp        (Home Page)
+└── pom.xml              (Maven Dependencies)
+
+
+4. TECHNICAL FEATURES & CODE SNIPPETS
+--------------------------------------
+
+A. OPTIMIZED JDBC CODE
+The DAO layer uses PreparedStatement to prevent SQL injection and 
+try-with-resources to ensure proper closing of connections, statements, 
+and result sets, even in case of errors.
+
+Snippet (ProductDAO.java):
+--------------------------
+try (Connection conn = DBConnection.getConnection();
+     PreparedStatement ps = conn.prepareStatement("SELECT * FROM products WHERE id = ?")) {
+    ps.setInt(1, productId);
+    try (ResultSet rs = ps.executeQuery()) {
+        if (rs.next()) {
+            // Mapping result set to JavaBean
+        }
+    }
+} catch (SQLException e) {
+    System.err.println("Database Error: " + e.getMessage());
+}
+
+B. ADVANCED SESSION & COOKIE MANAGEMENT
+- Sessions: Used to manage the persistent Shopping Cart across multiple requests.
+- Cookies: Used for personalizing the experience (e.g., "Recently Viewed Products").
+
+Snippet (CartServlet.java):
+---------------------------
+// Managing Shopping Cart in Session
+HttpSession session = request.getSession();
+List<CartItem> cart = (List<CartItem>) session.getAttribute("cart");
+if (cart == null) {
+    cart = new ArrayList<>();
+    session.setAttribute("cart", cart);
+}
+
+// Personalization via Cookies
+Cookie viewedCookie = new Cookie("last_viewed", String.valueOf(productId));
+viewedCookie.setMaxAge(60 * 60 * 24); // 24 Hours
+viewedCookie.setPath("/");
+response.addCookie(viewedCookie);
+
+C. CLEAN MVC & JSTL
+Dynamic listing of products using JSTL <c:forEach> avoids cluttered Java code 
+inside the frontend JSP files.
+
+Snippet (products.jsp):
+-----------------------
+<c:forEach var="product" items="${products}">
+    <div class="product-card">
+        <img src="${product.primaryImageUrl}" alt="${product.name}">
+        <h3>${product.name}</h3>
+        <p>₹${product.price}</p>
+        <button onclick="addToCart(${product.id})">Add to Cart</button>
+    </div>
+</c:forEach>
+
+
+5. DATABASE SCRIPTS & SCHEMA
+-----------------------------
+The database is highly normalized across 9 primary tables.
+
+SCHEMA SNAPSHOT:
+- users: Manages customers and admins.
+- products: Catalog details including pricing, stock, and ratings.
+- categories: Product organization.
+- orders/order_items: Transactional history with grand total, GST, and shipping.
+- reviews: High-end customer feedback system.
+
+CORE SCRIPT (frk_schema.sql):
+----------------------------
+CREATE TABLE products (
+    id          INT AUTO_INCREMENT PRIMARY KEY,
+    name        VARCHAR(255) NOT NULL,
+    price       DECIMAL(10,2) NOT NULL,
+    stock       INT NOT NULL DEFAULT 0,
+    is_featured BOOLEAN DEFAULT FALSE,
+    FOREIGN KEY (category_id) REFERENCES categories(id)
+) ENGINE=InnoDB;
+
+
+6. SCREENSHOTS & DEPLOYMENT
+----------------------------
+The application features a "Premium Production-Ready" UI with a dark aesthetic, 
+smooth animations, and a responsive layout.
+
+SCREENSHOT REFERENCES:
+- Home Page: home_page_1772552301843.png
+- Product Listing: product_listing_page_1772552324081.png
+- Product Detail: product_detail_page_1772552362035.png
+
+DEPLOYMENT STEPS:
+1. Initialize MySQL Database using 'frk_schema.sql'.
+2. Configure database credentials in '.env' or 'DBConnection.java'.
+3. Run 'mvn package' to build the WAR file.
+4. Deploy to a Servlet Container (Jetty, Tomcat, or Glassfish).
+5. Access via: http://localhost:8080/frk-collectives
+
+================================================================================
+                            REPORT GENERATED BY ANTIGRAVITY
+================================================================================
