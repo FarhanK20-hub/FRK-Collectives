@@ -104,7 +104,7 @@
                         <contextPath>/frk-collectives</contextPath>
                     </webApp>
                     <httpConnector>
-                        <port>8080</port>
+                        <port>${env.PORT}</port>
                     </httpConnector>
                 </configuration>
             </plugin>
