@@ -51,10 +51,13 @@ public class WishlistDAO {
                 "FROM wishlist w " +
                 "JOIN products p ON w.product_id = p.id " +
                 "JOIN categories c ON p.category_id = c.id " +
+                "WHERE w.user_id = ? " +
                 "ORDER BY w.created_at DESC";
 
         try (Connection conn = DBConnection.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql)) {
+
+            ps.setInt(1, userId);
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {

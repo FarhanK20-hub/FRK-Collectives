@@ -3,6 +3,7 @@ package com.frk.controller;
 import com.frk.dao.ProductDAO;
 import com.frk.model.CartItem;
 import com.frk.model.Product;
+import com.frk.util.Constants;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -13,8 +14,7 @@ import java.util.List;
 
 /**
  * CartServlet — Handles shopping cart operations.
- * Cart is stored in HttpSession. Supports add, remove, update with size
- * selection.
+ * Cart is stored in HttpSession. Supports add, remove, update with size selection.
  */
 @WebServlet("/cart")
 public class CartServlet extends HttpServlet {
@@ -32,24 +32,23 @@ public class CartServlet extends HttpServlet {
 
         HttpSession session = request.getSession();
         @SuppressWarnings("unchecked")
-        List<CartItem> cart = (List<CartItem>) session.getAttribute("cart");
+        List<CartItem> cart = (List<CartItem>) session.getAttribute(Constants.SESSION_CART);
 
         if (cart != null && !cart.isEmpty()) {
-            // Calculate totals
             double subtotal = 0;
             for (CartItem item : cart) {
                 subtotal += item.getSubtotal();
             }
 
-            double gst = subtotal * 0.18; // 18% GST
-            double shipping = subtotal >= 2999 ? 0 : 199; // Free shipping over ₹2,999
+            double gst = subtotal * Constants.GST_RATE;
+            double shipping = subtotal >= Constants.FREE_SHIPPING_THRESHOLD ? 0 : Constants.SHIPPING_FEE;
             double grandTotal = subtotal + gst + shipping;
 
             request.setAttribute("subtotal", subtotal);
             request.setAttribute("gst", gst);
             request.setAttribute("shipping", shipping);
             request.setAttribute("grandTotal", grandTotal);
-            request.setAttribute("freeShippingThreshold", 2999);
+            request.setAttribute("freeShippingThreshold", Constants.FREE_SHIPPING_THRESHOLD);
         }
 
         request.getRequestDispatcher("/cart.jsp").forward(request, response);
@@ -62,20 +61,18 @@ public class CartServlet extends HttpServlet {
         HttpSession session = request.getSession();
 
         @SuppressWarnings("unchecked")
-        List<CartItem> cart = (List<CartItem>) session.getAttribute("cart");
+        List<CartItem> cart = (List<CartItem>) session.getAttribute(Constants.SESSION_CART);
         if (cart == null) {
             cart = new ArrayList<>();
-            session.setAttribute("cart", cart);
+            session.setAttribute(Constants.SESSION_CART, cart);
         }
 
         try {
             if ("add".equals(action)) {
                 int productId = Integer.parseInt(request.getParameter("productId"));
                 String size = request.getParameter("size");
-                if (size == null || size.isEmpty())
-                    size = "M";
+                if (Constants.isBlank(size)) size = "M";
 
-                // Check if product with same size already exists in cart
                 boolean found = false;
                 for (CartItem item : cart) {
                     if (item.getProduct().getId() == productId &&
@@ -93,7 +90,6 @@ public class CartServlet extends HttpServlet {
                     }
                 }
 
-                // Set recently viewed cookie
                 Cookie viewedCookie = new Cookie("last_viewed", String.valueOf(productId));
                 viewedCookie.setMaxAge(60 * 60 * 24);
                 viewedCookie.setPath("/");

@@ -8,9 +8,9 @@
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>${product.name} | FRK Collectives</title>
-                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+                <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap"
                     rel="stylesheet">
-                <link rel="stylesheet" href="${pageContext.request.contextPath}/css/styles.css">
+                <link rel="stylesheet" href="${pageContext.request.contextPath}/css/styles.css?v=4.0">
             </head>
 
             <body class="bg-light">
@@ -208,6 +208,31 @@
                             // Auto-select first size
                             const firstSize = document.querySelector('.size-option');
                             if (firstSize) firstSize.click();
+
+                            // --- Product Image Hover Zoom (GSAP) ---
+                            (function() {
+                                if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+                                if (!window.gsap) return;
+
+                                var mainImg = document.getElementById('mainImage');
+                                if (!mainImg) return;
+
+                                mainImg.addEventListener('mouseenter', function() {
+                                    gsap.to(mainImg, { scale: 1.08, duration: 0.5, ease: 'expo.out' });
+                                });
+                                mainImg.addEventListener('mouseleave', function() {
+                                    gsap.to(mainImg, { scale: 1, duration: 0.4, ease: 'expo.out' });
+                                });
+
+                                // Entrance animation for product detail
+                                gsap.from('.product-detail', {
+                                    y: 30,
+                                    opacity: 0,
+                                    duration: 0.8,
+                                    ease: 'expo.out',
+                                    delay: 0.15
+                                });
+                            })();
                         </script>
 
             </body>

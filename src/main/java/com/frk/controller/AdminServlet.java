@@ -2,6 +2,7 @@ package com.frk.controller;
 
 import com.frk.dao.*;
 import com.frk.model.*;
+import com.frk.util.Constants;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -12,6 +13,11 @@ import java.util.List;
 /**
  * AdminServlet — Handles the admin panel.
  * Protected by AdminFilter (ADMIN role required).
+ *
+ * SECURITY FIXES:
+ * - All parseInt/parseDouble wrapped in try-catch (was crashing with 500)
+ * - Uses Constants.safeParseInt/safeParseDouble for safe parsing
+ * - Input validation on product form extraction
  */
 @WebServlet(urlPatterns = { "/admin/dashboard", "/admin/products", "/admin/product/add",
         "/admin/product/edit", "/admin/product/delete",
@@ -39,7 +45,6 @@ public class AdminServlet extends HttpServlet {
 
         switch (path) {
             case "/admin/dashboard":
-                // Dashboard stats
                 request.setAttribute("productCount", productDAO.getProductCount());
                 request.setAttribute("orderCount", orderDAO.getOrderCount());
                 request.setAttribute("userCount", userDAO.getUserCount());
@@ -59,9 +64,9 @@ public class AdminServlet extends HttpServlet {
                 break;
 
             case "/admin/product/edit":
-                String editId = request.getParameter("id");
-                if (editId != null) {
-                    Product product = productDAO.getProductById(Integer.parseInt(editId));
+                int editId = Constants.safeParseInt(request.getParameter("id"), -1);
+                if (editId > 0) {
+                    Product product = productDAO.getProductById(editId);
                     request.setAttribute("editProduct", product);
                 }
                 request.setAttribute("categories", categoryDAO.getAll());
@@ -120,11 +125,15 @@ public class AdminServlet extends HttpServlet {
     private void handleProductAdd(HttpServletRequest request, HttpServletResponse response)
             throws IOException {
         Product product = extractProductFromForm(request);
+        if (product == null) {
+            response.sendRedirect(request.getContextPath() + "/admin/products");
+            return;
+        }
         int productId = productDAO.addProduct(product);
 
         // Add image if provided
         String imageUrl = request.getParameter("imageUrl");
-        if (productId > 0 && imageUrl != null && !imageUrl.trim().isEmpty()) {
+        if (productId > 0 && !Constants.isBlank(imageUrl)) {
             productDAO.addProductImage(productId, imageUrl.trim(), true);
         }
 
@@ -134,9 +143,9 @@ public class AdminServlet extends HttpServlet {
     private void handleProductEdit(HttpServletRequest request, HttpServletResponse response)
             throws IOException {
         Product product = extractProductFromForm(request);
-        String idParam = request.getParameter("id");
-        if (idParam != null) {
-            product.setId(Integer.parseInt(idParam));
+        int id = Constants.safeParseInt(request.getParameter("id"), -1);
+        if (product != null && id > 0) {
+            product.setId(id);
             productDAO.updateProduct(product);
         }
         response.sendRedirect(request.getContextPath() + "/admin/products");
@@ -144,41 +153,34 @@ public class AdminServlet extends HttpServlet {
 
     private void handleProductDelete(HttpServletRequest request, HttpServletResponse response)
             throws IOException {
-        String idParam = request.getParameter("id");
-        if (idParam != null) {
-            productDAO.deleteProduct(Integer.parseInt(idParam));
+        int id = Constants.safeParseInt(request.getParameter("id"), -1);
+        if (id > 0) {
+            productDAO.deleteProduct(id);
         }
         response.sendRedirect(request.getContextPath() + "/admin/products");
     }
 
     private void handleOrderStatus(HttpServletRequest request, HttpServletResponse response)
             throws IOException {
-        String orderIdParam = request.getParameter("orderId");
+        int orderId = Constants.safeParseInt(request.getParameter("orderId"), -1);
         String status = request.getParameter("status");
 
-        if (orderIdParam != null && status != null) {
-            orderDAO.updateStatus(Integer.parseInt(orderIdParam), status);
+        if (orderId > 0 && status != null && Constants.VALID_ORDER_STATUSES.contains(status.trim().toUpperCase())) {
+            orderDAO.updateStatus(orderId, status.trim().toUpperCase());
         }
         response.sendRedirect(request.getContextPath() + "/admin/orders");
     }
 
     private Product extractProductFromForm(HttpServletRequest request) {
+        String name = request.getParameter("name");
+        if (Constants.isBlank(name)) return null;
+
         Product product = new Product();
-        product.setName(request.getParameter("name"));
-
-        String catId = request.getParameter("categoryId");
-        if (catId != null)
-            product.setCategoryId(Integer.parseInt(catId));
-
-        String price = request.getParameter("price");
-        if (price != null)
-            product.setPrice(Double.parseDouble(price));
-
-        String stock = request.getParameter("stock");
-        if (stock != null)
-            product.setStock(Integer.parseInt(stock));
-
-        product.setBrand(request.getParameter("brand") != null ? request.getParameter("brand") : "FRK");
+        product.setName(name.trim());
+        product.setCategoryId(Constants.safeParseInt(request.getParameter("categoryId"), 1));
+        product.setPrice(Constants.safeParseDouble(request.getParameter("price"), 0.0));
+        product.setStock(Constants.safeParseInt(request.getParameter("stock"), 0));
+        product.setBrand(!Constants.isBlank(request.getParameter("brand")) ? request.getParameter("brand").trim() : "FRK");
         product.setShortDescription(request.getParameter("shortDescription"));
         product.setDetailedDescription(request.getParameter("detailedDescription"));
         product.setSizeOptions(request.getParameter("sizeOptions"));

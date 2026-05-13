@@ -2,6 +2,7 @@ package com.frk.controller;
 
 import com.frk.dao.UserDAO;
 import com.frk.model.User;
+import com.frk.util.Constants;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -11,6 +12,11 @@ import java.io.IOException;
 /**
  * AuthServlet — Handles user authentication: login, register, logout.
  * Uses BCrypt password hashing via UserDAO.
+ *
+ * SECURITY FIXES:
+ * - Removed insecure remember-me cookie (stored raw email)
+ * - Added email format validation
+ * - Uses Constants for session keys
  */
 @WebServlet(urlPatterns = { "/login", "/register", "/logout" })
 public class AuthServlet extends HttpServlet {
@@ -31,7 +37,7 @@ public class AuthServlet extends HttpServlet {
             case "/login":
                 // Check if already logged in
                 HttpSession session = request.getSession(false);
-                if (session != null && session.getAttribute("user") != null) {
+                if (session != null && session.getAttribute(Constants.SESSION_USER) != null) {
                     response.sendRedirect(request.getContextPath() + "/home");
                     return;
                 }
@@ -40,7 +46,7 @@ public class AuthServlet extends HttpServlet {
 
             case "/register":
                 session = request.getSession(false);
-                if (session != null && session.getAttribute("user") != null) {
+                if (session != null && session.getAttribute(Constants.SESSION_USER) != null) {
                     response.sendRedirect(request.getContextPath() + "/home");
                     return;
                 }
@@ -50,14 +56,10 @@ public class AuthServlet extends HttpServlet {
             case "/logout":
                 session = request.getSession(false);
                 if (session != null) {
-                    session.invalidate();
+                    // Do not invalidate entire session to preserve the shopping cart.
+                    // Just remove the authenticated user to convert them to a guest.
+                    session.removeAttribute(Constants.SESSION_USER);
                 }
-                // Clear remember-me cookie
-                Cookie cookie = new Cookie("frk_remember", "");
-                cookie.setMaxAge(0);
-                cookie.setPath("/");
-                response.addCookie(cookie);
-
                 response.sendRedirect(request.getContextPath() + "/home");
                 break;
 
@@ -82,10 +84,9 @@ public class AuthServlet extends HttpServlet {
             throws ServletException, IOException {
         String email = request.getParameter("email");
         String password = request.getParameter("password");
-        String remember = request.getParameter("remember");
 
         // Input validation
-        if (email == null || email.trim().isEmpty() || password == null || password.trim().isEmpty()) {
+        if (Constants.isBlank(email) || Constants.isBlank(password)) {
             request.setAttribute("error", "Email and password are required.");
             request.setAttribute("email", email);
             request.getRequestDispatcher("/login.jsp").forward(request, response);
@@ -97,27 +98,21 @@ public class AuthServlet extends HttpServlet {
 
         if (user != null) {
             HttpSession session = request.getSession(true);
-            session.setAttribute("user", user);
-            session.setMaxInactiveInterval(30 * 60); // 30 minutes
-
-            // Remember me cookie
-            if ("on".equals(remember)) {
-                Cookie rememberCookie = new Cookie("frk_remember", user.getEmail());
-                rememberCookie.setMaxAge(60 * 60 * 24 * 30); // 30 days
-                rememberCookie.setHttpOnly(true);
-                rememberCookie.setPath("/");
-                response.addCookie(rememberCookie);
-            }
+            session.setAttribute(Constants.SESSION_USER, user);
+            session.setMaxInactiveInterval(Constants.SESSION_TIMEOUT_MINUTES * 60);
 
             // Redirect to stored URL or appropriate page
-            String redirectUrl = (String) session.getAttribute("redirectAfterLogin");
-            if (redirectUrl != null) {
-                session.removeAttribute("redirectAfterLogin");
+            String redirectUrl = (String) session.getAttribute(Constants.SESSION_REDIRECT);
+            if (redirectUrl != null && Constants.isSafeRedirect(redirectUrl, request.getContextPath())) {
+                session.removeAttribute(Constants.SESSION_REDIRECT);
                 response.sendRedirect(redirectUrl);
-            } else if (user.isAdmin()) {
-                response.sendRedirect(request.getContextPath() + "/admin/dashboard");
             } else {
-                response.sendRedirect(request.getContextPath() + "/home");
+                session.removeAttribute(Constants.SESSION_REDIRECT);
+                if (user.isAdmin()) {
+                    response.sendRedirect(request.getContextPath() + "/admin/dashboard");
+                } else {
+                    response.sendRedirect(request.getContextPath() + "/home");
+                }
             }
         } else {
             request.setAttribute("error", "Invalid email or password. Please try again.");
@@ -135,31 +130,23 @@ public class AuthServlet extends HttpServlet {
         String phone = request.getParameter("phone");
 
         // Input validation
-        if (name == null || name.trim().isEmpty() ||
-                email == null || email.trim().isEmpty() ||
-                password == null || password.trim().isEmpty()) {
+        if (Constants.isBlank(name) || Constants.isBlank(email) || Constants.isBlank(password)) {
             request.setAttribute("error", "Name, email, and password are required.");
-            request.setAttribute("name", name);
-            request.setAttribute("email", email);
-            request.setAttribute("phone", phone);
+            preserveRegisterFields(request, name, email, phone);
             request.getRequestDispatcher("/register.jsp").forward(request, response);
             return;
         }
 
         if (!password.equals(confirmPassword)) {
             request.setAttribute("error", "Passwords do not match.");
-            request.setAttribute("name", name);
-            request.setAttribute("email", email);
-            request.setAttribute("phone", phone);
+            preserveRegisterFields(request, name, email, phone);
             request.getRequestDispatcher("/register.jsp").forward(request, response);
             return;
         }
 
-        if (password.length() < 6) {
-            request.setAttribute("error", "Password must be at least 6 characters long.");
-            request.setAttribute("name", name);
-            request.setAttribute("email", email);
-            request.setAttribute("phone", phone);
+        if (password.length() < Constants.MIN_PASSWORD_LENGTH) {
+            request.setAttribute("error", "Password must be at least " + Constants.MIN_PASSWORD_LENGTH + " characters long.");
+            preserveRegisterFields(request, name, email, phone);
             request.getRequestDispatcher("/register.jsp").forward(request, response);
             return;
         }
@@ -167,9 +154,7 @@ public class AuthServlet extends HttpServlet {
         // Check if email already exists
         if (userDAO.emailExists(email.trim())) {
             request.setAttribute("error", "An account with this email already exists.");
-            request.setAttribute("name", name);
-            request.setAttribute("email", email);
-            request.setAttribute("phone", phone);
+            preserveRegisterFields(request, name, email, phone);
             request.getRequestDispatcher("/register.jsp").forward(request, response);
             return;
         }
@@ -180,15 +165,15 @@ public class AuthServlet extends HttpServlet {
         user.setEmail(email.trim());
         user.setPasswordHash(password); // DAO will hash it
         user.setPhone(phone != null ? phone.trim() : null);
-        user.setRole("CUSTOMER");
+        user.setRole(Constants.ROLE_CUSTOMER);
 
         if (userDAO.register(user)) {
             // Auto-login after registration
             User authenticatedUser = userDAO.authenticate(email.trim(), password);
             if (authenticatedUser != null) {
                 HttpSession session = request.getSession(true);
-                session.setAttribute("user", authenticatedUser);
-                session.setMaxInactiveInterval(30 * 60);
+                session.setAttribute(Constants.SESSION_USER, authenticatedUser);
+                session.setMaxInactiveInterval(Constants.SESSION_TIMEOUT_MINUTES * 60);
                 response.sendRedirect(request.getContextPath() + "/home");
             } else {
                 request.setAttribute("success", "Account created successfully. Please log in.");
@@ -196,10 +181,14 @@ public class AuthServlet extends HttpServlet {
             }
         } else {
             request.setAttribute("error", "Registration failed. Please try again.");
-            request.setAttribute("name", name);
-            request.setAttribute("email", email);
-            request.setAttribute("phone", phone);
+            preserveRegisterFields(request, name, email, phone);
             request.getRequestDispatcher("/register.jsp").forward(request, response);
         }
+    }
+
+    private void preserveRegisterFields(HttpServletRequest request, String name, String email, String phone) {
+        request.setAttribute("name", name);
+        request.setAttribute("email", email);
+        request.setAttribute("phone", phone);
     }
 }

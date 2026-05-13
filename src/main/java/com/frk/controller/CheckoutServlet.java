@@ -4,6 +4,7 @@ import com.frk.dao.AddressDAO;
 import com.frk.dao.OrderDAO;
 import com.frk.dao.ProductDAO;
 import com.frk.model.*;
+import com.frk.util.Constants;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -15,6 +16,10 @@ import java.util.List;
 /**
  * CheckoutServlet — Handles the checkout flow.
  * Requires authenticated user. Creates order in database.
+ *
+ * SECURITY FIXES:
+ * - Added null guard for session user in doPost
+ * - Uses Constants for GST, shipping, and session keys
  */
 @WebServlet("/checkout")
 public class CheckoutServlet extends HttpServlet {
@@ -34,10 +39,14 @@ public class CheckoutServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         HttpSession session = request.getSession(false);
+        if (session == null || session.getAttribute(Constants.SESSION_USER) == null) {
+            response.sendRedirect(request.getContextPath() + "/login");
+            return;
+        }
 
         // Check cart
         @SuppressWarnings("unchecked")
-        List<CartItem> cart = (session != null) ? (List<CartItem>) session.getAttribute("cart") : null;
+        List<CartItem> cart = (List<CartItem>) session.getAttribute(Constants.SESSION_CART);
 
         if (cart == null || cart.isEmpty()) {
             response.sendRedirect(request.getContextPath() + "/products");
@@ -45,7 +54,7 @@ public class CheckoutServlet extends HttpServlet {
         }
 
         // Load user addresses
-        User user = (User) session.getAttribute("user");
+        User user = (User) session.getAttribute(Constants.SESSION_USER);
         List<Address> addresses = addressDAO.getByUser(user.getId());
         request.setAttribute("addresses", addresses);
 
@@ -59,10 +68,14 @@ public class CheckoutServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         HttpSession session = request.getSession(false);
-        User user = (User) session.getAttribute("user");
+        if (session == null || session.getAttribute(Constants.SESSION_USER) == null) {
+            response.sendRedirect(request.getContextPath() + "/login");
+            return;
+        }
+        User user = (User) session.getAttribute(Constants.SESSION_USER);
 
         @SuppressWarnings("unchecked")
-        List<CartItem> cart = (List<CartItem>) session.getAttribute("cart");
+        List<CartItem> cart = (List<CartItem>) session.getAttribute(Constants.SESSION_CART);
 
         if (cart == null || cart.isEmpty()) {
             response.sendRedirect(request.getContextPath() + "/products");
@@ -76,9 +89,7 @@ public class CheckoutServlet extends HttpServlet {
         String couponCode = request.getParameter("couponCode");
 
         // Validate
-        if (shippingName == null || shippingName.trim().isEmpty() ||
-                shippingPhone == null || shippingPhone.trim().isEmpty() ||
-                shippingAddress == null || shippingAddress.trim().isEmpty()) {
+        if (Constants.isBlank(shippingName) || Constants.isBlank(shippingPhone) || Constants.isBlank(shippingAddress)) {
             request.setAttribute("error", "Please fill in all shipping details.");
             setCartTotals(request, cart);
             List<Address> addresses = addressDAO.getByUser(user.getId());
@@ -94,18 +105,17 @@ public class CheckoutServlet extends HttpServlet {
         }
 
         double discount = 0;
-        // Simple coupon logic
-        if (couponCode != null && !couponCode.trim().isEmpty()) {
+        if (!Constants.isBlank(couponCode)) {
             if ("FRK10".equalsIgnoreCase(couponCode.trim())) {
-                discount = subtotal * 0.10; // 10% off
+                discount = subtotal * 0.10;
             } else if ("FRK20".equalsIgnoreCase(couponCode.trim())) {
-                discount = subtotal * 0.20; // 20% off
+                discount = subtotal * 0.20;
             }
         }
 
         double afterDiscount = subtotal - discount;
-        double gst = afterDiscount * 0.18;
-        double shipping = afterDiscount >= 2999 ? 0 : 199;
+        double gst = afterDiscount * Constants.GST_RATE;
+        double shipping = afterDiscount >= Constants.FREE_SHIPPING_THRESHOLD ? 0 : Constants.SHIPPING_FEE;
         double grandTotal = afterDiscount + gst + shipping;
 
         // Build order
@@ -115,11 +125,11 @@ public class CheckoutServlet extends HttpServlet {
         order.setGst(gst);
         order.setShipping(shipping);
         order.setGrandTotal(grandTotal);
-        order.setStatus("CONFIRMED");
+        order.setStatus(Constants.STATUS_CONFIRMED);
         order.setShippingName(shippingName.trim());
         order.setShippingPhone(shippingPhone.trim());
         order.setShippingAddress(shippingAddress.trim());
-        order.setCouponCode(couponCode != null ? couponCode.trim() : null);
+        order.setCouponCode(!Constants.isBlank(couponCode) ? couponCode.trim() : null);
         order.setDiscount(discount);
 
         // Build order items
@@ -139,15 +149,11 @@ public class CheckoutServlet extends HttpServlet {
         int orderId = orderDAO.createOrder(order);
 
         if (orderId > 0) {
-            // Decrement stock for each item
             for (CartItem cartItem : cart) {
                 productDAO.decrementStock(cartItem.getProduct().getId(), cartItem.getQuantity());
             }
 
-            // Clear cart
-            session.removeAttribute("cart");
-
-            // Set order for confirmation page
+            session.removeAttribute(Constants.SESSION_CART);
             order.setId(orderId);
             request.setAttribute("order", order);
             request.getRequestDispatcher("/order-confirmation.jsp").forward(request, response);
@@ -163,8 +169,8 @@ public class CheckoutServlet extends HttpServlet {
         for (CartItem item : cart) {
             subtotal += item.getSubtotal();
         }
-        double gst = subtotal * 0.18;
-        double shipping = subtotal >= 2999 ? 0 : 199;
+        double gst = subtotal * Constants.GST_RATE;
+        double shipping = subtotal >= Constants.FREE_SHIPPING_THRESHOLD ? 0 : Constants.SHIPPING_FEE;
         double grandTotal = subtotal + gst + shipping;
 
         request.setAttribute("subtotal", subtotal);

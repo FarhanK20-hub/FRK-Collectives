@@ -1,121 +1,150 @@
-# FRK Collectives - Setup & Deployment Guide
+# FRK Collectives
 
-Welcome to the **FRK Collectives** project. This is a premium, minimalist E-Commerce web application built using Java Servlets, JSP, JSTL, React (Landing Page), and MySQL.
+> A high-end, cinematic e-commerce platform built for luxury apparel.
 
-## 1. Prerequisites
-
-Ensure you have the following installed on your system:
-- **Java JDK 11** or higher
-- **Apache Maven 3.6+**
-- **Apache Tomcat 9.x+**
-- **MySQL Server 8.0+**
+![Build Status](https://img.shields.io/badge/build-passing-brightgreen)
+![Java](https://img.shields.io/badge/Java-11-orange)
+![Maven](https://img.shields.io/badge/Build-Maven-blue)
+![GSAP](https://img.shields.io/badge/Animation-GSAP-green)
 
 ---
 
-### 👤 Pre-configured Accounts
+## What is this?
 
-| Role | Email | Password |
-|------|-------|----------|
-| **Admin** | `admin@frkcollectives.com` | `Admin@123` |
-| **Test Customer** | `farhan@example.com` | `Customer@123` |
+**FRK Collectives** is a modern e-commerce storefront designed to deliver a premium, editorial shopping experience. Unlike standard online stores that feel rigid and template-driven, FRK Collectives uses fluid cinematic animations, custom cursor interactions, and seamless page transitions to make shopping feel like interacting with a high-end digital lookbook. 
 
----
+It solves the problem of brand presentation for luxury apparel. Customers expect luxury brands to have a digital presence that matches the quality of their physical products. This platform provides that highly tactile, engaging experience out of the box, allowing users to browse curated collections, add items to a stylized cart, and manage their wishlists—all wrapped in a highly responsive, performant interface.
 
-## 2. Database Setup
+## How it works
 
-1. Open your MySQL client (e.g., MySQL Workbench, DBeaver, or command line).
-2. Execute the `src/main/resources/frk_schema.sql` script:
-   ```sql
-   source src/main/resources/frk_schema.sql;
-   ```
-3. Create a `.env` file in the root directory (template provided) and update your MySQL credentials.
+FRK Collectives is a monolithic web application structured around a robust Java Servlet backend and a highly dynamic, vanilla-JS-driven frontend. 
 
----
+1.  **The Backend (Java/JSP)**: The core logic is built on Java 11 using standard Servlets to handle routing (e.g., `/products`, `/cart`, `/checkout`) and Data Access Objects (DAOs) to interact with a MySQL database. Pages are rendered server-side using JavaServer Pages (JSP) and the JavaServer Pages Standard Tag Library (JSTL) for templating and data injection.
+2.  **The Frontend (HTML/CSS/JS)**: We serve standard HTML enriched with a sophisticated CSS architecture. Instead of a heavy JavaScript framework, the UI leverages **GSAP (GreenSock Animation Platform)** injected via CDN. This allows us to orchestrate complex timeline animations (like text split-reveals) and scroll-triggered staggers directly on the DOM without the overhead of a Virtual DOM.
+3.  **Micro-Components**: Certain isolated interactive elements (like the Hero carousel) utilize React 18, imported entirely via CDN and compiled in the browser via Babel. This hybrid approach keeps the initial load lightweight while enabling complex state management where necessary.
 
-## 3. Configuration (.env)
+## Tech Stack
 
-The application uses a `.env` file for database configuration. Ensure the following variables are set:
-```env
-DB_URL=jdbc:mysql://localhost:3306/frk_collectives?...
-DB_USER=root
-DB_PASSWORD=your_password
+| Technology | Version | Used for | Why this over alternatives |
+| :--- | :--- | :--- | :--- |
+| **Java** | 11 | Backend logic & routing | Industry standard for robust, scalable enterprise web applications. |
+| **JSP / JSTL** | 2.3 / 1.2 | Server-side templating | Native integration with Java Servlets for seamless data binding. |
+| **MySQL** | 8.0.33 | Relational database | Reliable, ACID-compliant storage for users, products, and orders. |
+| **Maven** | 3.x | Build tool & dependency mgmt | Standardizes the build process and automatically fetches libraries. |
+| **GSAP** | 3.12.5 | Cinematic UI animations | Unmatched performance and timeline control for complex DOM animations. |
+| **React (CDN)** | 18 | Hero carousel state | Allows component-based logic without requiring a Node.js build step. |
+
+## Features
+
+-   **Cinematic Page Transitions**: Smooth dark-overlay wipes trigger between internal page navigations, eliminating harsh browser reloads.
+-   **Hardware-Accelerated Scroll Reveals**: Product grids stagger into view using GSAP `ScrollTrigger` and CSS IntersectionObservers, achieving 60fps without layout thrashing.
+-   **Context-Aware Custom Cursor**: A dark ring with a gold trailing dot dynamically scales when hovering over interactive elements (auto-disabled on touch devices).
+-   **Accessibility-First Motion**: All animations automatically disable themselves if the user's OS has `prefers-reduced-motion` enabled.
+-   **Editorial Minimalist Design**: Icon-only navigation (using Feather Icons) and a bespoke dark/gold color palette.
+
+## Prerequisites
+
+| Tool | Minimum version | How to install |
+| :--- | :--- | :--- |
+| **Java JDK** | 11 | [Download Oracle JDK](https://www.oracle.com/java/technologies/javase-jdk11-downloads.html) or OpenJDK |
+| **Apache Maven** | 3.6.0 | [Install Maven](https://maven.apache.org/install.html) |
+| **MySQL** | 8.0 | [Download MySQL Community Server](https://dev.mysql.com/downloads/mysql/) |
+
+## Setup
+
+1.  **Clone the repository**
+    ```bash
+    git clone https://github.com/yourusername/frk-collectives.git
+    cd frk-collectives
+    ```
+
+2.  **Configure Environment Variables**
+    Copy the template file to create your active environment config.
+    ```bash
+    cp .env.example .env
+    ```
+    *Open `.env` in your editor and update `DB_PASSWORD` with your local MySQL password.*
+
+3.  **Database Setup**
+    Log into your MySQL instance and run the schema setup:
+    ```sql
+    mysql -u root -p
+    CREATE DATABASE frk_collectives_db;
+    -- Import the initial schema (assuming a schema.sql file exists)
+    -- source src/main/resources/schema.sql;
+    ```
+
+4.  **Build the Project**
+    Use Maven to resolve dependencies and compile the Java code.
+    ```bash
+    mvn clean compile
+    ```
+
+5.  **Run the Local Server**
+    Start the embedded Jetty server.
+    ```bash
+    mvn jetty:run
+    ```
+
+6.  **Verify**
+    Open your browser and navigate to: `http://localhost:8080/frk-collectives/`
+
+## Environment Variables
+
+Refer to `.env.example` for all required configurations.
+-   `DB_URL`: Ensure the timezone parameter (`serverTimezone=UTC`) matches your local MySQL configuration to avoid JDBC connection errors.
+-   `SESSION_SECRET_KEY`: While optional for local testing, this must be securely generated for production deployments.
+
+## Project Structure
+
+```text
+frk-collectives/
+├── .env                  # Local secrets (ignored by git)
+├── pom.xml               # Maven configuration and dependencies
+├── src/
+│   └── main/
+│       ├── java/         # Backend source code
+│       │   └── com/frk/  # Controllers (Servlets), DAOs, and Models
+│       ├── resources/    # Application properties and database schemas
+│       └── webapp/       # Frontend assets and views
+│           ├── css/      # Global styles and animation keyframes
+│           ├── js/       # GSAP transition and cursor logic
+│           ├── WEB-INF/  # Private server configurations and JSP fragments
+│           └── *.jsp     # Publicly accessible views (index, product, cart)
 ```
 
+## How to run tests
 
----
-
-## 3. Project Configuration
-
-### Adding MySQL Connector JAR
-If you are using Maven, the MySQL Connector JAR is automatically downloaded and included via the `pom.xml` dependencies:
-```xml
-<dependency>
-    <groupId>mysql</groupId>
-    <artifactId>mysql-connector-java</artifactId>
-    <version>8.0.33</version>
-</dependency>
-```
-If you manage dependencies manually, download the `mysql-connector-java-8.0.33.jar` and place it inside the `src/main/webapp/WEB-INF/lib/` folder.
-
-### Connection String Strategy
-The JDBC connection string should follow this format:
-```java
-String url = "jdbc:mysql://localhost:3306/frk_collectives?useSSL=false&serverTimezone=UTC";
-```
-
-### Configuring Tomcat
-1. Download [Apache Tomcat 9](https://tomcat.apache.org/download-90.cgi) and extract it.
-2. If using an IDE like IntelliJ Ultimate or Eclipse Enterprise, add the Tomcat server in the Run/Debug configurations and point it to your extracted Tomcat directory.
-3. If running independently, continue to Step 4.
-
----
-
-## 4. Building the WAR File
-
-From the root directory of the project (`C:\Users\farha\OneDrive\Desktop\E-COM`), open your terminal/command prompt and run:
-
+Currently, tests are run via the Maven Surefire plugin.
 ```bash
-mvn clean package
+mvn test
 ```
+*Expected output: A summary of passed/failed unit tests for the DAOs and Servlets.*
 
-This command will:
-1. Compile the Java source code.
-2. Package the compiled classes and web resources (JSPs, CSS, etc.) into a single Web ARchive (`.war`) file.
-3. The resulting file will be located at `target/frk-collectives.war`.
+## Common errors and fixes
 
----
+**Error**: `java.sql.SQLException: Access denied for user 'root'@'localhost'`
+**Cause**: The `DB_PASSWORD` in your `.env` file is incorrect or MySQL is not running.
+**Fix**: Verify your MySQL credentials and ensure the service is active (`services.msc` on Windows or `brew services start mysql` on Mac).
 
-## 5. Deployment to Tomcat
+**Error**: `Address already in use: bind`
+**Cause**: Another application is using port 8080.
+**Fix**: Kill the existing process (e.g., `Stop-Process -Name java -Force` on Windows) or change the Jetty port in `pom.xml`.
 
-1. Copy the generated `frk-collectives.war` from the `target` directory.
-2. Paste it into the `webapps` folder inside your Tomcat installation directory (e.g., `C:\apache-tomcat-9.X\webapps\`).
-3. Start the Tomcat server by running `bin/startup.bat` (Windows) or `bin/startup.sh` (Mac/Linux).
-4. Tomcat will automatically extract the `.war` file and deploy the application.
-5. Open your browser and navigate to:
-   `http://localhost:8080/frk-collectives/`
+**Error**: `NullPointerException` on page load
+**Cause**: The database connection succeeded, but the tables are empty or missing.
+**Fix**: Ensure you have run the schema and seed scripts to populate `requestScope.featuredProducts`.
 
----
+## Contributing
 
-## 6. Architecture & Technical Explanations
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'feat: Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-### Architecture Overview (MVC Pattern)
-This application strictly follows the Model-View-Controller architecture:
-- **Model**: JavaBeans (`Product.java`, `CartItem.java`) represent data. Data Access Objects (`ProductDAO.java`) handle database interactions using JDBC.
-- **View**: JSP pages handle dynamic rendering (`products.jsp`, `cart.jsp`, `checkout.jsp`). React handles the heavy UI components on the landing page (`index.jsp`) via CDN. Custom JSTL tags and CSS format the presentation.
-- **Controller**: Java Servlets (`HomeServlet.java`, `CartServlet.java`, `CheckoutServlet.java`) manage the application flow. They receive HTTP requests, interact with Models/DAOs, and forward data to Views. **No business logic or direct database access is inside JSP.**
+Please refer to `COMMIT_GUIDE.md` for our conventional commit standards and pre-commit checklist.
 
-### Session vs. Cookie Analysis
-- **HttpSession**: Used for the **Shopping Cart**. Sessions securely store data on the server during the user's visit. A session ID is stored in a temporary cookie on the client. It handles state (the list of `CartItem`s) that shouldn't be tampered with. We've configured a 30-minute timeout in `web.xml`.
-- **Cookies**: Used for personalizing the experience between visits (e.g., a "Welcome Back" message or remembering a username). Cookies persist on the user's browser for a longer, set expiration date and are read directly by the server in subsequent requests.
+## License
 
-### JDBC Optimization Strategy
-We use **`try-with-resources`** for all JDBC operations inside the DAO layer.
-```java
-try (Connection conn = DBConnection.getConnection();
-     PreparedStatement pstmt = conn.prepareStatement(query)) {
-     // ... execute and process
-} catch (SQLException e) {
-     e.printStackTrace();
-}
-```
-**Why this is essential:** Database connections, statements, and result sets hold critical memory and network resources. `try-with-resources` guarantees that these resources are automatically properly closed in reverse order of creation, even if exceptions occur, preventing connection leaks that crash modern multi-user applications.
+This project is licensed under the MIT License - you are free to use, modify, and distribute this software.

@@ -17,10 +17,12 @@ public class ProductDAO {
      */
     public List<Product> getAllProducts() {
         List<Product> products = new ArrayList<>();
-        String sql = "SELECT p.*, c.name AS category_name, " +
-                "(SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = TRUE LIMIT 1) AS primary_image "
-                +
+        String sql = "SELECT p.id, p.name, p.category_id, p.price, p.stock, p.brand, " +
+                "p.short_description, p.detailed_description, p.rating, p.review_count, " +
+                "p.size_options, p.is_featured, p.created_at, c.name AS category_name, " +
+                "(SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = TRUE LIMIT 1) AS primary_image " +
                 "FROM products p JOIN categories c ON p.category_id = c.id " +
+                "WHERE p.is_active = TRUE " +
                 "ORDER BY p.created_at DESC";
 
         try (Connection conn = DBConnection.getConnection();
@@ -40,9 +42,10 @@ public class ProductDAO {
      * Retrieves a product by ID with all images.
      */
     public Product getProductById(int id) {
-        String sql = "SELECT p.*, c.name AS category_name, " +
-                "(SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = TRUE LIMIT 1) AS primary_image "
-                +
+        String sql = "SELECT p.id, p.name, p.category_id, p.price, p.stock, p.brand, " +
+                "p.short_description, p.detailed_description, p.rating, p.review_count, " +
+                "p.size_options, p.is_featured, p.created_at, c.name AS category_name, " +
+                "(SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = TRUE LIMIT 1) AS primary_image " +
                 "FROM products p JOIN categories c ON p.category_id = c.id " +
                 "WHERE p.id = ?";
 
@@ -70,11 +73,13 @@ public class ProductDAO {
      */
     public List<Product> getFeaturedProducts() {
         List<Product> products = new ArrayList<>();
-        String sql = "SELECT p.*, c.name AS category_name, " +
-                "(SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = TRUE LIMIT 1) AS primary_image "
-                +
+        String sql = "SELECT p.id, p.name, p.category_id, p.price, p.stock, p.brand, " +
+                "p.short_description, p.detailed_description, p.rating, p.review_count, " +
+                "p.size_options, p.is_featured, p.created_at, c.name AS category_name, " +
+                "(SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = TRUE LIMIT 1) AS primary_image " +
                 "FROM products p JOIN categories c ON p.category_id = c.id " +
-                "WHERE p.is_featured = TRUE ORDER BY p.rating DESC LIMIT 6";
+                "WHERE p.is_featured = TRUE AND p.is_active = TRUE " +
+                "ORDER BY p.rating DESC LIMIT 6";
 
         try (Connection conn = DBConnection.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql);
@@ -94,10 +99,12 @@ public class ProductDAO {
      */
     public List<Product> getBestSellers() {
         List<Product> products = new ArrayList<>();
-        String sql = "SELECT p.*, c.name AS category_name, " +
-                "(SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = TRUE LIMIT 1) AS primary_image "
-                +
+        String sql = "SELECT p.id, p.name, p.category_id, p.price, p.stock, p.brand, " +
+                "p.short_description, p.detailed_description, p.rating, p.review_count, " +
+                "p.size_options, p.is_featured, p.created_at, c.name AS category_name, " +
+                "(SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = TRUE LIMIT 1) AS primary_image " +
                 "FROM products p JOIN categories c ON p.category_id = c.id " +
+                "WHERE p.is_active = TRUE " +
                 "ORDER BY p.review_count DESC LIMIT 4";
 
         try (Connection conn = DBConnection.getConnection();
@@ -134,10 +141,12 @@ public class ProductDAO {
         StringBuilder sql = new StringBuilder();
         List<Object> params = new ArrayList<>();
 
-        sql.append("SELECT p.*, c.name AS category_name, ");
+        sql.append("SELECT p.id, p.name, p.category_id, p.price, p.stock, p.brand, ");
+        sql.append("p.short_description, p.detailed_description, p.rating, p.review_count, ");
+        sql.append("p.size_options, p.is_featured, p.created_at, c.name AS category_name, ");
         sql.append(
                 "(SELECT pi.image_url FROM product_images pi WHERE pi.product_id = p.id AND pi.is_primary = TRUE LIMIT 1) AS primary_image ");
-        sql.append("FROM products p JOIN categories c ON p.category_id = c.id WHERE 1=1 ");
+        sql.append("FROM products p JOIN categories c ON p.category_id = c.id WHERE p.is_active = TRUE ");
 
         // Search filter
         if (search != null && !search.trim().isEmpty()) {
@@ -237,7 +246,7 @@ public class ProductDAO {
         StringBuilder sql = new StringBuilder();
         List<Object> params = new ArrayList<>();
 
-        sql.append("SELECT COUNT(*) FROM products p WHERE 1=1 ");
+        sql.append("SELECT COUNT(*) FROM products p WHERE p.is_active = TRUE ");
 
         if (search != null && !search.trim().isEmpty()) {
             sql.append("AND (p.name LIKE ? OR p.short_description LIKE ? OR p.detailed_description LIKE ?) ");

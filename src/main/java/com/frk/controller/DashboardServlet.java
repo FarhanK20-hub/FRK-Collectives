@@ -5,6 +5,7 @@ import com.frk.dao.OrderDAO;
 import com.frk.dao.UserDAO;
 import com.frk.dao.WishlistDAO;
 import com.frk.model.*;
+import com.frk.util.Constants;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -15,6 +16,10 @@ import java.util.List;
 /**
  * DashboardServlet — Handles the user dashboard.
  * Tabs: profile, orders, wishlist, addresses.
+ *
+ * SECURITY FIXES:
+ * - Added null guards for session user in both doGet and doPost
+ * - Added input validation for address fields
  */
 @WebServlet(urlPatterns = { "/dashboard", "/dashboard/profile", "/dashboard/orders",
         "/dashboard/addresses", "/dashboard/address/add", "/dashboard/address/delete" })
@@ -37,7 +42,11 @@ public class DashboardServlet extends HttpServlet {
     protected void doGet(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         HttpSession session = request.getSession(false);
-        User user = (User) session.getAttribute("user");
+        if (session == null || session.getAttribute(Constants.SESSION_USER) == null) {
+            response.sendRedirect(request.getContextPath() + "/login");
+            return;
+        }
+        User user = (User) session.getAttribute(Constants.SESSION_USER);
         String path = request.getServletPath();
 
         // Determine active tab
@@ -75,7 +84,11 @@ public class DashboardServlet extends HttpServlet {
     protected void doPost(HttpServletRequest request, HttpServletResponse response)
             throws ServletException, IOException {
         HttpSession session = request.getSession(false);
-        User user = (User) session.getAttribute("user");
+        if (session == null || session.getAttribute(Constants.SESSION_USER) == null) {
+            response.sendRedirect(request.getContextPath() + "/login");
+            return;
+        }
+        User user = (User) session.getAttribute(Constants.SESSION_USER);
         String path = request.getServletPath();
 
         if ("/dashboard/profile".equals(path)) {
@@ -83,12 +96,12 @@ public class DashboardServlet extends HttpServlet {
             String name = request.getParameter("name");
             String phone = request.getParameter("phone");
 
-            if (name != null && !name.trim().isEmpty()) {
+            if (!Constants.isBlank(name)) {
                 user.setName(name.trim());
                 user.setPhone(phone != null ? phone.trim() : user.getPhone());
 
                 if (userDAO.updateProfile(user)) {
-                    session.setAttribute("user", user);
+                    session.setAttribute(Constants.SESSION_USER, user);
                     request.setAttribute("success", "Profile updated successfully.");
                 } else {
                     request.setAttribute("error", "Failed to update profile.");
@@ -100,27 +113,40 @@ public class DashboardServlet extends HttpServlet {
             request.getRequestDispatcher("/dashboard.jsp").forward(request, response);
 
         } else if ("/dashboard/address/add".equals(path)) {
+            // Validate required address fields
+            String addressName = request.getParameter("addressName");
+            String addressPhone = request.getParameter("addressPhone");
+            String line1 = request.getParameter("line1");
+            String city = request.getParameter("city");
+            String state = request.getParameter("state");
+            String pincode = request.getParameter("pincode");
+
+            if (Constants.isBlank(addressName) || Constants.isBlank(addressPhone) ||
+                Constants.isBlank(line1) || Constants.isBlank(city) ||
+                Constants.isBlank(state) || Constants.isBlank(pincode)) {
+                // Redirect back without saving — fields incomplete
+                response.sendRedirect(request.getContextPath() + "/dashboard/addresses");
+                return;
+            }
+
             Address address = new Address();
             address.setUserId(user.getId());
-            address.setName(request.getParameter("addressName"));
-            address.setPhone(request.getParameter("addressPhone"));
-            address.setLine1(request.getParameter("line1"));
+            address.setName(addressName.trim());
+            address.setPhone(addressPhone.trim());
+            address.setLine1(line1.trim());
             address.setLine2(request.getParameter("line2"));
-            address.setCity(request.getParameter("city"));
-            address.setState(request.getParameter("state"));
-            address.setPincode(request.getParameter("pincode"));
+            address.setCity(city.trim());
+            address.setState(state.trim());
+            address.setPincode(pincode.trim());
             address.setDefault("on".equals(request.getParameter("isDefault")));
 
             addressDAO.add(address);
             response.sendRedirect(request.getContextPath() + "/dashboard/addresses");
 
         } else if ("/dashboard/address/delete".equals(path)) {
-            String idParam = request.getParameter("addressId");
-            if (idParam != null) {
-                try {
-                    addressDAO.delete(Integer.parseInt(idParam), user.getId());
-                } catch (NumberFormatException ignored) {
-                }
+            int addressId = Constants.safeParseInt(request.getParameter("addressId"), -1);
+            if (addressId > 0) {
+                addressDAO.delete(addressId, user.getId());
             }
             response.sendRedirect(request.getContextPath() + "/dashboard/addresses");
         }

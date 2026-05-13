@@ -97,11 +97,21 @@ public class OrderDAO {
     }
 
     /**
-     * Retrieves orders for a specific user.
+     * Retrieves orders for a specific user with items (single JOIN query).
+     * N+1 FIX: Previously fired getOrderItems() per order in a loop.
      */
     public List<Order> getOrdersByUser(int userId) {
-        List<Order> orders = new ArrayList<>();
-        String sql = "SELECT * FROM orders WHERE user_id = ? ORDER BY created_at DESC";
+        // LinkedHashMap preserves insertion order (most recent first)
+        java.util.LinkedHashMap<Integer, Order> orderMap = new java.util.LinkedHashMap<>();
+
+        String sql = "SELECT o.id, o.user_id, o.subtotal, o.gst, o.shipping, o.grand_total, " +
+                "o.status, o.shipping_name, o.shipping_phone, o.shipping_address, " +
+                "o.coupon_code, o.discount, o.created_at, " +
+                "oi.id AS item_id, oi.product_id, oi.product_name, oi.quantity, oi.size, oi.price AS item_price " +
+                "FROM orders o " +
+                "LEFT JOIN order_items oi ON oi.order_id = o.id " +
+                "WHERE o.user_id = ? " +
+                "ORDER BY o.created_at DESC, oi.id ASC";
 
         try (Connection conn = DBConnection.getConnection();
                 PreparedStatement ps = conn.prepareStatement(sql)) {
@@ -110,15 +120,35 @@ public class OrderDAO {
 
             try (ResultSet rs = ps.executeQuery()) {
                 while (rs.next()) {
-                    Order order = extractOrder(rs);
-                    order.setItems(getOrderItems(order.getId()));
-                    orders.add(order);
+                    int orderId = rs.getInt("id");
+
+                    // Get or create the order
+                    Order order = orderMap.get(orderId);
+                    if (order == null) {
+                        order = extractOrder(rs);
+                        order.setItems(new ArrayList<>());
+                        orderMap.put(orderId, order);
+                    }
+
+                    // Add item if present (LEFT JOIN may produce null items)
+                    int itemId = rs.getInt("item_id");
+                    if (!rs.wasNull()) {
+                        OrderItem item = new OrderItem();
+                        item.setId(itemId);
+                        item.setOrderId(orderId);
+                        item.setProductId(rs.getInt("product_id"));
+                        item.setProductName(rs.getString("product_name"));
+                        item.setQuantity(rs.getInt("quantity"));
+                        item.setSize(rs.getString("size"));
+                        item.setPrice(rs.getDouble("item_price"));
+                        order.getItems().add(item);
+                    }
                 }
             }
         } catch (SQLException e) {
             System.err.println("Error fetching user orders: " + e.getMessage());
         }
-        return orders;
+        return new ArrayList<>(orderMap.values());
     }
 
     /**

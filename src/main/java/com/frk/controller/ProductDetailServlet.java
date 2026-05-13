@@ -6,6 +6,7 @@ import com.frk.dao.WishlistDAO;
 import com.frk.model.Product;
 import com.frk.model.Review;
 import com.frk.model.User;
+import com.frk.util.Constants;
 
 import javax.servlet.ServletException;
 import javax.servlet.annotation.WebServlet;
@@ -15,6 +16,10 @@ import java.util.List;
 
 /**
  * ProductDetailServlet — Handles the individual product detail page.
+ *
+ * SECURITY FIXES:
+ * - Review rating validated between 1-5 server-side
+ * - Uses Constants for session keys
  */
 @WebServlet("/product")
 public class ProductDetailServlet extends HttpServlet {
@@ -35,7 +40,7 @@ public class ProductDetailServlet extends HttpServlet {
             throws ServletException, IOException {
 
         String idParam = request.getParameter("id");
-        if (idParam == null || idParam.isEmpty()) {
+        if (Constants.isBlank(idParam)) {
             response.sendRedirect(request.getContextPath() + "/products");
             return;
         }
@@ -54,8 +59,8 @@ public class ProductDetailServlet extends HttpServlet {
 
             // Check wishlist status if logged in
             HttpSession session = request.getSession(false);
-            if (session != null && session.getAttribute("user") != null) {
-                User user = (User) session.getAttribute("user");
+            if (session != null && session.getAttribute(Constants.SESSION_USER) != null) {
+                User user = (User) session.getAttribute(Constants.SESSION_USER);
                 boolean inWishlist = wishlistDAO.isInWishlist(user.getId(), productId);
                 request.setAttribute("inWishlist", inWishlist);
             }
@@ -87,12 +92,12 @@ public class ProductDetailServlet extends HttpServlet {
             throws ServletException, IOException {
         // Handle review submission
         HttpSession session = request.getSession(false);
-        if (session == null || session.getAttribute("user") == null) {
+        if (session == null || session.getAttribute(Constants.SESSION_USER) == null) {
             response.sendRedirect(request.getContextPath() + "/login");
             return;
         }
 
-        User user = (User) session.getAttribute("user");
+        User user = (User) session.getAttribute(Constants.SESSION_USER);
         String productIdParam = request.getParameter("productId");
         String ratingParam = request.getParameter("rating");
         String comment = request.getParameter("comment");
@@ -100,6 +105,12 @@ public class ProductDetailServlet extends HttpServlet {
         try {
             int productId = Integer.parseInt(productIdParam);
             int rating = Integer.parseInt(ratingParam);
+
+            // SECURITY: Validate rating bounds server-side
+            if (rating < Constants.MIN_REVIEW_RATING || rating > Constants.MAX_REVIEW_RATING) {
+                response.sendRedirect(request.getContextPath() + "/product?id=" + productId);
+                return;
+            }
 
             Review review = new Review();
             review.setProductId(productId);

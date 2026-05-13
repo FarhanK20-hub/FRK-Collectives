@@ -59,12 +59,13 @@ public class DBConnection {
             config.setPassword(dbPass);
             config.setDriverClassName("com.mysql.cj.jdbc.Driver");
 
-            // Pool configuration
-            config.setMaximumPoolSize(20);
-            config.setMinimumIdle(5);
+            // Pool configuration — tuned for production
+            config.setMaximumPoolSize(10);
+            config.setMinimumIdle(3);
             config.setIdleTimeout(300000); // 5 minutes
-            config.setConnectionTimeout(20000); // 20 seconds
+            config.setConnectionTimeout(10000); // 10 seconds
             config.setMaxLifetime(1200000); // 20 minutes
+            config.setLeakDetectionThreshold(30000); // 30 seconds — flags leaked connections
 
             // Performance optimizations
             config.addDataSourceProperty("cachePrepStmts", "true");

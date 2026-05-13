@@ -8,9 +8,9 @@
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>Shopping Bag | FRK Collectives</title>
-                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+                <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap"
                     rel="stylesheet">
-                <link rel="stylesheet" href="${pageContext.request.contextPath}/css/styles.css">
+                <link rel="stylesheet" href="${pageContext.request.contextPath}/css/styles.css?v=4.0">
             </head>
 
             <body class="bg-light">
@@ -42,9 +42,9 @@
                                                     <p class="cart-item-price">
                                                         <frk:formatCurrency value="${item.product.price}" />
                                                     </p>
-                                                    <div class="cart-actions">
+                                                    <div class="cart-actions" style="margin-top: 16px; gap: 12px;">
                                                         <form action="${pageContext.request.contextPath}/cart"
-                                                            method="post" class="update-form">
+                                                            method="post" class="update-form" style="display: flex; gap: 8px; align-items: center;">
                                                             <input type="hidden" name="action" value="update">
                                                             <input type="hidden" name="productId"
                                                                 value="${item.product.id}">
@@ -52,18 +52,22 @@
                                                                 value="${item.selectedSize}">
                                                             <input type="number" name="quantity"
                                                                 value="${item.quantity}" min="1" max="10"
-                                                                class="qty-input">
-                                                            <button type="submit" class="btn-link">Update</button>
+                                                                class="qty-input" style="border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--bg); color: var(--text-primary); height: 36px; padding: 0 12px; font-weight: 500;">
+                                                            <button type="submit" class="btn-ghost" style="padding: 6px 12px; height: 36px; display: flex; align-items: center; gap: 6px; font-size: 0.85rem; border: 1px solid transparent;">
+                                                                <i data-feather="refresh-cw" style="width: 14px; height: 14px;"></i> Update
+                                                            </button>
                                                         </form>
                                                         <form action="${pageContext.request.contextPath}/cart"
-                                                            method="post">
+                                                            method="post" style="display: flex; align-items: center;">
                                                             <input type="hidden" name="action" value="remove">
                                                             <input type="hidden" name="productId"
                                                                 value="${item.product.id}">
                                                             <input type="hidden" name="size"
                                                                 value="${item.selectedSize}">
                                                             <button type="submit"
-                                                                class="btn-link text-danger">Remove</button>
+                                                                class="btn-ghost text-danger" style="padding: 6px 12px; height: 36px; display: flex; align-items: center; gap: 6px; font-size: 0.85rem; border: 1px solid transparent;">
+                                                                <i data-feather="trash-2" style="width: 14px; height: 14px;"></i> Remove
+                                                            </button>
                                                         </form>
                                                     </div>
                                                 </div>
@@ -121,9 +125,15 @@
                                         </c:if>
 
                                         <a href="${pageContext.request.contextPath}/checkout"
-                                            class="btn btn-primary btn-block mt-8">Proceed to Checkout</a>
+                                            class="btn btn-primary btn-block mt-8" style="gap: 10px;">
+                                            <i data-feather="lock" style="width: 18px; height: 18px;"></i>
+                                            Proceed to Checkout
+                                        </a>
                                         <a href="${pageContext.request.contextPath}/products"
-                                            class="btn btn-ghost btn-block mt-2">Continue Shopping</a>
+                                            class="btn btn-ghost btn-block mt-2" style="gap: 10px;">
+                                            <i data-feather="arrow-left" style="width: 18px; height: 18px;"></i>
+                                            Continue Shopping
+                                        </a>
                                     </div>
                                 </div>
                             </c:otherwise>

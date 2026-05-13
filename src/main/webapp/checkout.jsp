@@ -8,9 +8,9 @@
                 <meta charset="UTF-8">
                 <meta name="viewport" content="width=device-width, initial-scale=1.0">
                 <title>Checkout | FRK Collectives</title>
-                <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap"
+                <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:wght@400;500;600;700&family=DM+Sans:wght@300;400;500;600;700&display=swap"
                     rel="stylesheet">
-                <link rel="stylesheet" href="${pageContext.request.contextPath}/css/styles.css">
+                <link rel="stylesheet" href="${pageContext.request.contextPath}/css/styles.css?v=4.0">
             </head>
 
             <body class="bg-light">
@@ -63,7 +63,7 @@
                                     </c:if>
 
                                     <!-- Coupon Code -->
-                                    <div class="form-group">
+                                    <div class="form-group" style="margin-bottom: 40px;">
                                         <label for="couponCode">Coupon Code (Optional)</label>
                                         <div class="coupon-row">
                                             <input type="text" id="couponCode" name="couponCode" class="form-control"
@@ -72,7 +72,39 @@
                                         <small class="text-muted">Try FRK10 (10% off) or FRK20 (20% off)</small>
                                     </div>
 
-                                    <button type="submit" class="btn btn-primary btn-block btn-lg">Place Order</button>
+                                    <!-- Payment Gateway (Gimmick) -->
+                                    <div class="payment-section" style="padding-top: 32px; border-top: 1px solid var(--border); margin-bottom: 32px;">
+                                        <h3 style="margin-bottom: 24px; display: flex; align-items: center; gap: 8px;">
+                                            <i data-feather="credit-card" style="width:20px; height:20px; color:var(--text-secondary);"></i>
+                                            Payment Details
+                                        </h3>
+                                        <div class="form-group">
+                                            <label for="cardNumber">Card Number</label>
+                                            <div style="position: relative;">
+                                                <input type="text" id="cardNumber" class="form-control" placeholder="0000 0000 0000 0000" maxlength="19" required style="padding-left: 40px;">
+                                                <i data-feather="credit-card" style="position: absolute; left: 12px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; color: var(--text-muted);"></i>
+                                            </div>
+                                        </div>
+                                        <div class="form-row">
+                                            <div class="form-group">
+                                                <label for="expiry">Expiry Date</label>
+                                                <input type="text" id="expiry" class="form-control" placeholder="MM/YY" maxlength="5" required>
+                                            </div>
+                                            <div class="form-group">
+                                                <label for="cvv">CVV</label>
+                                                <input type="password" id="cvv" class="form-control" placeholder="123" maxlength="4" required>
+                                            </div>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="cardName">Name on Card</label>
+                                            <input type="text" id="cardName" class="form-control" placeholder="John Doe" required>
+                                        </div>
+                                    </div>
+
+                                    <button type="submit" class="btn btn-primary btn-block btn-lg" style="gap: 12px;">
+                                        <i data-feather="lock" style="width: 18px; height: 18px;"></i>
+                                        Pay Securely
+                                    </button>
                                 </form>
                             </div>
 
